@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a66c2" />
+  <title>Radar de Vagas LinkedIn</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root {
+      --primary: #0a66c2;
+      --primary-dark: #004182;
+      --bg: #f3f2ef;
+      --card: #ffffff;
+      --text: #191919;
+      --muted: #666666;
+      --border: #dce6f1;
+      --chip-bg: #e8f3ff;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; }
+    header {
+      background: var(--primary); color: #fff; padding: 16px;
+      position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    header h1 { margin: 0; font-size: 1.15rem; }
+    header p { margin: 4px 0 0; font-size: 0.8rem; opacity: 0.9; }
+
+    .tabs {
+      display: flex; background: #fff; border-bottom: 1px solid #ddd;
+      position: sticky; top: 64px; z-index: 9;
+    }
+    .tab {
+      flex: 1; padding: 12px 8px; text-align: center; font-size: 0.85rem;
+      font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; cursor: pointer;
+    }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    .container { padding: 14px; max-width: 600px; margin: 0 auto; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .card {
+      background: var(--card); border-radius: 12px; padding: 16px;
+      margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card h2 { margin: 0 0 10px; font-size: 1rem; color: var(--primary-dark); }
+    label { display: block; font-size: 0.82rem; font-weight: 600; margin: 10px 0 4px; color: #333; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px;
+      font-size: 0.95rem; background: #fff;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+
+    .row { display: flex; gap: 8px; margin-top: 6px; }
+    .row input { flex: 1; }
+
+    button {
+      border: none; border-radius: 8px; padding: 12px 16px; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer; transition: 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; width: 100%; margin-top: 12px; }
+    .btn-primary:active { background: var(--primary-dark); }
+    .btn-secondary { background: #eef3f8; color: var(--primary); }
+    .btn-outline {
+      background: transparent; border: 1.5px solid var(--primary);
+      color: var(--primary); width: 100%; margin-top: 8px;
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .chip {
+      background: var(--chip-bg); color: var(--primary-dark); padding: 6px 10px;
+      border-radius: 20px; font-size: 0.82rem; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border);
+    }
+    .chip.selected { background: var(--primary); color: #fff; }
+    .chip span.del { font-weight: bold; cursor: pointer; opacity: 0.75; }
+
+    .url-box {
+      background: #f8fafc; border: 1px dashed #94a3b8; padding: 10px;
+      border-radius: 8px; font-size: 0.75rem; word-break: break-all;
+      color: #334155; margin-top: 10px;
+    }
+
+    .saved-item {
+      border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;
+      margin-bottom: 10px; background: #fafcff;
+    }
+    .saved-item h3 { margin: 0 0 4px; font-size: 0.95rem; }
+    .saved-item p { margin: 0 0 10px; font-size: 0.8rem; color: var(--muted); }
+    .saved-actions { display: flex; gap: 8px; }
+    .saved-actions button { flex: 1; padding: 8px; font-size: 0.85rem; }
+    .btn-danger { background: #fee2e2; color: #b91c1c; flex: 0 0 auto !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Radar de Vagas LinkedIn</h1>
+  <p>Filtre por currículo, local e data com link direto</p>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(event, 'busca')">1. Buscar</div>
+  <div class="tab" onclick="switchTab(event, 'curriculo')">2. Currículo</div>
+  <div class="tab" onclick="switchTab(event, 'salvos')">3. Salvos (<span id="savedCount">0</span>)</div>
+</div>
+
+<div class="container">
+
+  <!-- ABA 1: BUSCA E FILTROS -->
+  <div id="tab-busca" class="section active">
+    <div class="card">
+      <h2>Palavras-chave da vaga</h2>
+      <p style="font-size:0.8rem; color:var(--muted); margin:0 0 8px;">
+        Toque nas tags para ativar/desativar na busca ou adicione novas:
+      </p>
+      <div class="row">
+        <input type="text" id="newKeyword" placeholder="Ex: Gerente de Contas, CRM..." />
+        <button class="btn-secondary" onclick="addManualKeyword()">+ Add</button>
+      </div>
+      <div id="keywordChips" class="chips"></div>
+    </div>
+
+    <div class="card">
+      <h2>Local e Data</h2>
+
+      <label for="locationInput">Cidade, Estado ou País</label>
+      <input type="text" id="locationInput" value="São Paulo, Brasil" placeholder="Ex: São Paulo, Brasil" />
+
+      <label for="workplaceSelect">Modalidade</label>
+      <select id="workplaceSelect">
+        <option value="">Todas as modalidades</option>
+        <option value="2">Remoto</option>
+        <option value="3">Híbrido</option>
+        <option value="1">Presencial</option>
+      </select>
+
+      <label for="dateSelect">Data de publicação</label>
+      <select id="dateSelect">
+        <option value="r86400">Últimas 24 horas</option>
+        <option value="r604800" selected>Última semana (7 dias)</option>
+        <option value="r2592000">Último mês (30 dias)</option>
+        <option value="">Qualquer data</option>
+      </select>
+
+      <label for="sortSelect">Ordenar por</label>
+      <select id="sortSelect">
+        <option value="DD">Mais recentes primeiro</option>
+        <option value="R">Mais relevantes</option>
+      </select>
+
+      <button class="btn-primary" onclick="openLinkedIn()">Abrir Vagas no LinkedIn</button>
+      <button class="btn-outline" onclick="copyLink()">Copiar Link Gerado</button>
+      <button class="btn-outline" onclick="saveCurrentSearch()">Salvar esta Configuração</button>
+
+      <div id="urlPreview" class="url-box"></div>
+    </div>
+  </div>
+
+  <!-- ABA 2: CURRÍCULO -->
+  <div id="tab-curriculo" class="section">
+    <div class="card">
+      <h2>Extrair do Currículo</h2>
+      <p style="font-size:0.82rem; color:var(--muted); margin-top:0;">
+        Cole o texto do seu currículo abaixo. O app identifica automaticamente termos e habilidades relevantes para você usar nos filtros.
+      </p>
+      <textarea id="resumeText" placeholder="Cole aqui seu resumo profissional, cargos e competências..."></textarea>
+      <button class="btn-primary" onclick="extractFromResume()">Extrair Palavras-chave</button>
+    </div>
+  </div>
+
+  <!-- ABA 3: BUSCAS SALVAS -->
+  <div id="tab-salvos" class="section">
+    <div class="card">
+      <h2>Filtros Favoritos</h2>
+      <div id="savedList"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let state = JSON.parse(localStorage.getItem('linkedinRadarState')) || {
+    keywords: [
+      { text: 'Gerente de Contas', active: true },
+      { text: 'Relacionamento com Clientes', active: true },
+      { text: 'Negociação', active: false },
+      { text: 'Customer Success', active: false }
+    ],
+    location: 'São Paulo, Brasil',
+    workplace: '',
+    date: 'r604800',
+    sort: 'DD',
+    resume: '',
+    savedSearches: []
+  };
+
+  function saveState() {
+    localStorage.setItem('linkedinRadarState', JSON.stringify(state));
+    updatePreview();
+  }
+
+  function switchTab(ev, name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+    if (name === 'salvos') renderSaved();
+  }
+
+  function renderChips() {
+    const container = document.getElementById('keywordChips');
+    container.innerHTML = '';
+    state.keywords.forEach((kw, idx) => {
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (kw.active ? ' selected' : '');
+      chip.innerHTML = `
+        <span onclick="toggleKeyword(${idx})">${kw.text}</span>
+        <span class="del" onclick="removeKeyword(${idx})">×</span>
+      `;
+      container.appendChild(chip);
+    });
+    updatePreview();
+  }
+
+  function toggleKeyword(idx) {
+    state.keywords[idx].active = !state.keywords[idx].active;
+    saveState();
+    renderChips();
+  }
+
+  function removeKeyword(idx) {
+    state.keywords.splice(idx, 1);
+    saveState();
+    renderChips();
+  }
+
+  function addManualKeyword() {
+    const input = document.getElementById('newKeyword');
+    const val = input.value.trim();
+    if (!val) return;
+    if (!state.keywords.some(k => k.text.toLowerCase() === val.toLowerCase())) {
+      state.keywords.push({ text: val, active: true });
+    }
+    input.value = '';
+    saveState();
+    renderChips();
+  }
+
+  function buildLinkedInUrl(customParams = null) {
+    const activeKws = customParams
+      ? customParams.keywords
+      : state.keywords.filter(k => k.active).map(k => `"${k.text}"`);
+
+    const location = customParams ? customParams.location : document.getElementById('locationInput').value.trim();
+    const workplace = customParams ? customParams.workplace : document.getElementById('workplaceSelect').value;
+    const date = customParams ? customParams.date : document.getElementById('dateSelect').value;
+    const sort = customParams ? customParams.sort : document.getElementById('sortSelect').value;
+
+    const url = new URL('https://www.linkedin.com/jobs/search/');
+    if (activeKws.length > 0) url.searchParams.set('keywords', activeKws.join(' OR '));
+    if (location) url.searchParams.set('location', location);
+    if (workplace) url.searchParams.set('f_WT', workplace);
+    if (date) url.searchParams.set('f_TPR', date);
+    if (sort) url.searchParams.set('sortBy', sort);
+
+    return url.toString();
+  }
+
+  function updatePreview() {
+    state.location = document.getElementById('locationInput').value;
+    state.workplace = document.getElementById('workplaceSelect').value;
+    state.date = document.getElementById('dateSelect').value;
+    state.sort = document.getElementById('sortSelect').value;
+    document.getElementById('urlPreview').textContent = buildLinkedInUrl();
+    document.getElementById('savedCount').textContent = state.savedSearches.length;
+  }
+
+  function openLinkedIn(urlOverride = null) {
+    const targetUrl = urlOverride || buildLinkedInUrl();
+    window.open(targetUrl, '_blank');
+  }
+
+  function copyLink() {
+    const link = buildLinkedInUrl();
+    navigator.clipboard.writeText(link).then(() => alert('Link copiado para a área de transferência!'));
+  }
+
+  function extractFromResume() {
+    const text = document.getElementById('resumeText').value;
+    state.resume = text;
+    if (!text.trim()) return alert('Cole o texto do currículo primeiro.');
+
+    const stopWords = new Set(['para','como','com','dos','das','nos','nas','pelo','pela','sobre','entre','mais','muito','através','anos','experiência','trabalho','empresa','brasil','paulo','são']);
+    const words = text
+      .replace(/[.,;:()\/\-•\n\r]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= 4 && !stopWords.has(w.toLowerCase()));
+
+    const freq = {};
+    words.forEach(w => {
+      const clean = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+      freq[clean] = (freq[clean] || 0) + 1;
+    });
+
+    const topTerms = Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(entry => entry[0]);
+
+    topTerms.forEach(term => {
+      if (!state.keywords.some(k => k.text.toLowerCase() === term.toLowerCase())) {
+        state.keywords.push({ text: term, active: false });
+      }
+    });
+
+    saveState();
+    renderChips();
+    alert(`${topTerms.length} palavras-chave extraídas! Volte para a aba "1. Buscar" para ativar as que deseja usar.`);
+  }
+
+  function saveCurrentSearch() {
+    const activeKws = state.keywords.filter(k => k.active).map(k => `"${k.text}"`);
+    if (activeKws.length === 0) return alert('Selecione pelo menos uma palavra-chave.');
+    const label = activeKws.map(k => k.replace(/"/g, '')).join(', ');
+    const loc = document.getElementById('locationInput').value.trim() || 'Qualquer local';
+
+    state.savedSearches.unshift({
+      id: Date.now(),
+      title: label,
+      subtitle: `${loc} • ${document.getElementById('dateSelect').selectedOptions[0].text}`,
+      url: buildLinkedInUrl()
+    });
+    saveState();
+    alert('Busca salva na aba "3. Salvos"!');
+  }
+
+  function renderSaved() {
+    const list = document.getElementById('savedList');
+    if (state.savedSearches.length === 0) {
+      list.innerHTML = '<p style="color:var(--muted); font-size:0.85rem;">Nenhuma busca salva ainda.</p>';
+      return;
+    }
+    list.innerHTML = state.savedSearches.map((item, idx) => `
+      <div class="saved-item">
+        <h3>${item.title}</h3>
+        <p>${item.subtitle}</p>
+        <div class="saved-actions">
+          <button class="btn-primary" style="margin:0" onclick="openLinkedIn('${item.url}')">Abrir Vagas</button>
+          <button class="btn-danger" onclick="deleteSaved(${idx})">Excluir</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function deleteSaved(idx) {
+    state.savedSearches.splice(idx, 1);
+    saveState();
+    renderSaved();
+  }
+
+  document.getElementById('locationInput').value = state.location;
+  document.getElementById('workplaceSelect').value = state.workplace;
+  document.getElementById('dateSelect').value = state.date;
+  document.getElementById('sortSelect').value = state.sort;
+  document.getElementById('resumeText').value = state.resume || '';
+
+  ['locationInput', 'workplaceSelect', 'dateSelect', 'sortSelect'].forEach(id => {
+    document.getElementById(id).addEventListener('change', saveState);
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+
+  renderChips();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
