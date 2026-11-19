@@ -1,0 +1,15 @@
+{
+  "name": "Radar de Vagas LinkedIn",
+  "short_name": "Radar Vagas",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f3f2ef",
+  "theme_color": "#0a66c2",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/174/174857.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
